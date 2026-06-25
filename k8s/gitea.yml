@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea
+  namespace: gitea
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea
+  template:
+    metadata:
+      labels:
+        app: gitea
+    spec:
+      containers:
+      - name: gitea
+        image: gitea/gitea:latest
+        ports:
+        - containerPort: 3000
+        - containerPort: 22
+        env:
+        - name: GITEA__database__DB_TYPE
+          value: postgres
+        - name: GITEA__database__HOST
+          value: postgres:5432
+        - name: GITEA__database__NAME
+          value: gitea
+        - name: GITEA__database__USER
+          value: gitea
+        - name: GITEA__database__PASSWD
+          value: gitea123
+        - name: GITEA__server__DOMAIN
+          value: localhost
+        - name: GITEA__server__HTTP_PORT
+          value: "3000"
+        - name: GITEA__server__ROOT_URL
+          value: http://localhost:3000
+        volumeMounts:
+        - name: gitea-data
+          mountPath: /data
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 20
+      volumes:
+      - name: gitea-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea
+  namespace: gitea
+spec:
+  selector:
+    app: gitea
+  ports:
+  - name: web
+    port: 3000
+    targetPort: 3000
+  - name: ssh
+    port: 22
+    targetPort: 22
+  type: ClusterIP
