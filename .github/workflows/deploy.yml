@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
 jobs:
-  validate:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,15 +13,28 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
 
-      - name: Validate Kubernetes manifests
+      - name: Setup kubeconfig
         run: |
-          kubectl apply --dry-run=client --validate=false -f k8s/namespace.yml
-          kubectl apply --dry-run=client --validate=false -f k8s/postgres.yml
-          kubectl apply --dry-run=client --validate=false -f k8s/gitea.yml
-          kubectl apply --dry-run=client --validate=false -f monitoring/prometheus-config.yml
-          kubectl apply --dry-run=client --validate=false -f monitoring/prometheus.yml
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
 
-      - name: Lint check
+      - name: Test cluster connection
+        run: kubectl get nodes
+
+      - name: Deploy to Kubernetes
         run: |
-          echo "All manifests validated successfully"
-          echo "Deploy with: kubectl apply -f k8s/ && kubectl apply -f monitoring/"
+          kubectl apply -f k8s/namespace.yml
+          kubectl apply -f k8s/postgres.yml
+          kubectl apply -f k8s/gitea.yml
+          kubectl apply -f monitoring/prometheus-config.yml
+          kubectl apply -f monitoring/prometheus.yml
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/postgres -n gitea --timeout=120s
+          kubectl rollout status deployment/gitea -n gitea --timeout=120s
+          kubectl rollout status deployment/prometheus -n gitea --timeout=120s
+
+      - name: Get pod status
+        run: kubectl get pods -n gitea
