@@ -1,0 +1,36 @@
+name: Gitea Production CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/namespace.yml
+          kubectl apply -f k8s/postgres.yml
+          kubectl apply -f k8s/gitea.yml
+          kubectl apply -f monitoring/prometheus-config.yml
+          kubectl apply -f monitoring/prometheus.yml
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/gitea -n gitea
+          kubectl rollout status deployment/postgres -n gitea
+          kubectl rollout status deployment/prometheus -n gitea
+
+      - name: Get pod status
+        run: kubectl get pods -n gitea
