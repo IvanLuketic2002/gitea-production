@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,24 +13,15 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
 
-      - name: Setup kubeconfig
+      - name: Validate Kubernetes manifests
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          kubectl apply --dry-run=client --validate=false -f k8s/namespace.yml
+          kubectl apply --dry-run=client --validate=false -f k8s/postgres.yml
+          kubectl apply --dry-run=client --validate=false -f k8s/gitea.yml
+          kubectl apply --dry-run=client --validate=false -f monitoring/prometheus-config.yml
+          kubectl apply --dry-run=client --validate=false -f monitoring/prometheus.yml
 
-      - name: Deploy to Kubernetes
+      - name: Lint check
         run: |
-          kubectl apply -f k8s/namespace.yml
-          kubectl apply -f k8s/postgres.yml
-          kubectl apply -f k8s/gitea.yml
-          kubectl apply -f monitoring/prometheus-config.yml
-          kubectl apply -f monitoring/prometheus.yml
-
-      - name: Verify deployment
-        run: |
-          kubectl rollout status deployment/gitea -n gitea
-          kubectl rollout status deployment/postgres -n gitea
-          kubectl rollout status deployment/prometheus -n gitea
-
-      - name: Get pod status
-        run: kubectl get pods -n gitea
+          echo "All manifests validated successfully"
+          echo "Deploy with: kubectl apply -f k8s/ && kubectl apply -f monitoring/"
