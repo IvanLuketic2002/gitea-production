@@ -2,9 +2,7 @@
 
 Production-grade self-hosted Git server deployed on Kubernetes (k3s) on AWS EC2. Simulates real DevOps workflow — GitHub Actions automatically deploys the entire stack on every push.
 
-## Live Demo
-- **Gitea:** http://3.123.2.206:30000
-- **Prometheus:** http://3.123.2.206:9090 (port-forward required)
+
 
 ## Architecture
 
